@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Management Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .highlight {
+            background-color: rgba(255, 255, 0, 0.3); /* Transparentes Gelb */
+        }
+
+        [contenteditable="true"] {
+            border: 1px solid lightgray;
+            padding: 5px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        /* Scrollbare Tabelle */
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Schlichtes Design */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #ffffff;
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #333;
+        }
+
+        .btn {
+            border-radius: 20px;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            padding: 10px 0;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .dropdown-menu {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Highlighted Column Background */
+        .highlight-column {
+            background-color: rgba(255, 255, 0, 0.3); /* Transparentes Gelb */
+        }
+    </style>
+    <script>
+        // Funktion, um Änderungen zu speichern, wenn die Bearbeitung abgeschlossen ist
+        function saveCellData(event) {
+            const element = event.target;
+            const eventName = element.getAttribute('data-eventname');
+            const columnName = element.getAttribute('data-column');
+            const newValue = element.textContent;
+
+            fetch('/update_cell', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_name: eventName,
+                    column_name: columnName,
+                    new_value: newValue
+                }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Update successful');
+                    } else {
+                        console.log('Update failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating cell:', error);
+                });
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Data Management Tool</h1>
+        
+        <!-- Kurze Beschreibung des Tools -->
+        <p class="mb-4">Verwalte deine Datensätze effizient. Diese Tabelle ist bearbeitbar, du kannst nach Einträgen suchen oder neue Daten hinzufügen.</p>
+
+        <!-- Suchleiste -->
+        <form method="GET" action="/">
+            <div class="input-group mb-4">
+                <input type="text" class="form-control" name="search" placeholder="Search..." value="{{ query }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+
+        <!-- Buttons zum Hinzufügen neuer Daten und Export -->
+        <div class="d-flex justify-content-between mb-4">
+            <a href="{{ url_for('add_data') }}" class="btn btn-primary">Add New Entry</a>
+            <a href="{{ url_for('export_excel') }}" class="btn btn-secondary">Export Excel</a>
+        </div>
+
+        {% if selected_column and selected_value %}
+        <p>Filtered by: {{ selected_column }} ({{ selected_value }})</p>
+        {% endif %}
+
+        <!-- Scrollbare Tabelle -->
+        <div class="table-container">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        {% for col in columns %}
+                        <th class="{% if col == selected_column %}highlight{% endif %}">
+                            {{ col }}
+                            <!-- Submenu für True/False Filter -->
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Filter
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{{ url_for('filter_by_column', column=col, value='true') }}">True</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('filter_by_column', column=col, value='false') }}">False</a></li>
+                                </ul>
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in records %}
+                    <tr>
+                        {% for col in columns %}
+                        <td contenteditable="true" 
+                            data-eventname="{{ row['Eventname'] }}" 
+                            data-column="{{ col }}" 
+                            onblur="saveCellData(event)" 
+                            class="{% if col == selected_column %}highlight-column{% endif %}">
+                            {% if col == 'Eventname' %}
+                            <a href="{{ url_for('show_event', event_name=row[col]) }}">{{ row[col] }}</a>
+                            {% else %}
+                            <!-- Highlight Suchergebnisse -->
+                            {% if query and query.lower() in row[col].lower() %}
+                            <span class="highlight">{{ row[col] }}</span>
+                            {% else %}
+                            {{ row[col] }}
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>&copy; 2024 Kassem Farhat (Praktikant). All Rights Reserved.</p>
+        <a href="mailto:kassem.farhat@budt.org">Anfragen</a> <a href=""></a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
